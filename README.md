@@ -2,6 +2,15 @@
 
 [![离线回归测试](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml) · Python 3.10+ · [MIT](LICENSE)
 
+### Windows 桌面版
+
+[下载 Windows x64 安装包（0.2.0）](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.2.0/EyeSeeYou-Edge-0.2.0-Windows-x64.msi)。双击 MSI 完成安装，从开始菜单打开 **EyeSeeYou Edge**。安装包包含 Python 和图形界面，可离线使用。
+
+- **学习与专注**：输入“背单词 20 分钟”，预览分段计划，点“确认开始”。支持暂停、继续、结束与分段加时。关闭应用会保存进度，重新打开后由你确认继续。
+- **观测回放**：载入内置示例或自己的 JSONL，生成 HTML 报告并在浏览器中打开。学习进度保存在当前用户的 `%LOCALAPPDATA%\EyeSeeYou Edge`，报告位置由你选择。桌面版使用手动专注计时和日志回放，不调用摄像头。
+
+开发运行使用 `python -m eyeseeyou_edge.desktop`（需要 Tk）。在 64 位 Windows、CPython 3.13 的虚拟环境中执行 `python -m pip install cx-Freeze==8.7.4` 和 `python windows/build_msi.py bdist_msi` 可重新构建安装包，产物位于 `windows/dist/`。
+
 EyeSeeYou Edge 把团队 A210 学习助手的判断过程搬到了普通电脑上。给它一段带时间戳的眼口观测，就能逐帧查出哪一帧触发了疲劳提醒、哪一帧撤回。专注会话也能回放，从生成学习计划，到离席暂停、回座后由用户确认继续。
 
 *Replay an edge agent’s alerts and focus sessions locally, using timestamped observations and Python’s standard library.*

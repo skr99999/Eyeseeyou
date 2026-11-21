@@ -17,6 +17,7 @@ jobs:
       - run: python -B -m unittest discover -s tests -v
       - run: python examples/check_alerts.py
       - run: python -m pip install --no-deps .
+      - run: python -I examples/check_session.py examples/fatigue.jsonl
       - name: Replay using only the installed package
         run: >-
           python -I -c "from pathlib import Path; from eyeseeyou_edge.replay import replay;

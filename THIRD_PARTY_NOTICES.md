@@ -1,10 +1,13 @@
 # 来源与第三方说明
 
+Windows 桌面安装包另外包含 CPython、Tcl/Tk、cx_Freeze 启动组件和 Microsoft Visual C++ 运行库。随包许可见安装目录的 `licenses`、`share` 及 cx_Freeze 版权说明。第三方组件沿用各自的许可。桌面版的计划、计时和回放调度来自本仓的公开实现。
+
 本仓库源自 EyeSeeYou 团队的 A210 v2.0 比赛提交版。原件的 LICENSE 与 AUTHORS.txt 随仓保留。原作者见 [AUTHORS.txt](AUTHORS.txt)。
 
 | 当前文件 | 由来 |
 | --- | --- |
-| `models.py`、`focus.py`、`database.py` | 沿用原版 `src/a210_fatigue_agent/` 下同名团队源码。 |
+| `models.py`、`database.py` | 沿用原版 `src/a210_fatigue_agent/` 下同名团队源码。 |
+| `focus.py` | 源自同目录的专注状态机。桌面移植增加无视觉输入的手动计时，结束会话时清除待确认的分段状态。 |
 | `fatigue.py` | 基于同目录原文件，补充断流时的计时重置、失去有效眼部观测时的窗口重建，以及等待确认睁眼期间的闭眼计时处理。 |
 | `plan.py` | 参考原 `qwen.py`、`agent.py` 的本地任务模板、时长分配和确认流程，独立为可测试接口。 |
 | `replay_config.json` | 从暑期运行配置选取疲劳判断、眼状态确认、告警冷却所需参数，并增加断流判定间隔。 |

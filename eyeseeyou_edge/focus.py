@@ -70,7 +70,8 @@ class FocusSessionController:
         self.last_gesture_at = -1e9
         self._restore_latest_session()
 
-    def update(self, observation: VisionObservation, now: float | None = None) -> list[dict]:
+    def update(self, observation: VisionObservation | None, now: float | None = None) -> list[dict]:
+        """Advance the session clock. A manual timer can tick without visual observations."""
         now = time.monotonic() if now is None else now
         elapsed = max(0.0, min(now - self.last_update, 2.0))
         self.last_update = now
@@ -94,7 +95,9 @@ class FocusSessionController:
             self.current.away_seconds += elapsed
             self.current.current_away_seconds += elapsed
 
-        if self.current.state == "RUNNING":
+        if observation is None:
+            self.face_missing_since = self.face_returned_since = None
+        elif self.current.state == "RUNNING":
             if observation.face.found:
                 self.face_missing_since = None
             else:
@@ -102,7 +105,7 @@ class FocusSessionController:
                 if now - self.face_missing_since >= float(self.cfg.get("away_seconds", 30.0)):
                     events.append(self._enter_away())
 
-        if self.current.state == "AWAY":
+        if observation is not None and self.current.state == "AWAY":
             if observation.face.found:
                 self.face_returned_since = self.face_returned_since or now
                 if (not self.current.recovery_ready and
@@ -113,6 +116,7 @@ class FocusSessionController:
 
         phone_detected = (
             self.current.state == "RUNNING"
+            and observation is not None
             and observation.detections.phone.found
             and observation.detections.phone.near_primary_user
         )
@@ -154,8 +158,8 @@ class FocusSessionController:
             self.phone_episode_seconds = 0.0
             self.phone_latched = False
 
-        gesture = observation.gesture
-        if gesture.stable and gesture.name not in {"", "NONE", "UNCERTAIN"}:
+        gesture = observation.gesture if observation is not None else None
+        if gesture is not None and gesture.stable and gesture.name not in {"", "NONE", "UNCERTAIN"}:
             if self.gesture_latch != gesture.name and now - self.last_gesture_at >= float(self.cfg.get("gesture_cooldown_seconds", 2.0)):
                 self.gesture_latch = gesture.name
                 self.last_gesture_at = now
@@ -686,6 +690,9 @@ class FocusSessionController:
 
     def _finish(self, state: str, event_type: str) -> dict:
         self.current.state = state
+        self.current.segment_review_ready = False
+        self.current.segment_review_id = None
+        self.current.segment_review_index = None
         self.current.return_confirmation_required = False
         self.current.recovery_ready = False
         self.current.recovery_id = None
