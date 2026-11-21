@@ -1,0 +1,34 @@
+{
+  "eye_detector": {
+    "mode": "ocec_v3",
+    "closed_confirm_frames": 2,
+    "open_confirm_frames": 2
+  },
+  "fatigue": {
+    "calibration_seconds": 8.0,
+    "ear_threshold_ratio": 0.58,
+    "min_ear_threshold": 0.12,
+    "max_ear_threshold": 0.24,
+    "eye_state_confirm_frames": 2,
+    "eye_open_confirm_frames": 1,
+    "eye_open_hysteresis_ratio": 1.15,
+    "eye_hybrid": {
+      "enabled": true,
+      "min_eye_width_pixels": 8.0,
+      "min_quality": 0.35,
+      "white_open_ratio": 0.62,
+      "contrast_open_ratio": 0.55,
+      "minimum_white_ratio": 0.04
+    },
+    "blink_min_seconds": 0.12,
+    "long_eye_closure_seconds": 1.5,
+    "perclos_window_seconds": 60.0,
+    "perclos_min_observation_seconds": 15.0,
+    "perclos_warning_threshold": 0.28,
+    "mar_threshold": 0.6,
+    "yawn_min_seconds": 1.0,
+    "frequent_yawn_count": 3,
+    "face_missing_warning_seconds": 3.0
+  },
+  "event_cooldown_seconds": 30.0
+}
