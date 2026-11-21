@@ -10,7 +10,15 @@ EyeSeeYou Edge 把团队 A210 学习助手的判断过程搬到了普通电脑�
 
 ## 复现图中的误报
 
-用 Python 3.10 或更高版本，在仓库根目录运行一条命令。示例已随仓提供，无需安装依赖、连接摄像头或配置密钥。
+在仓库根目录用 Python 3.10 或更高版本生成离线报告：
+
+```sh
+python -m eyeseeyou_edge examples/tracking_loss.jsonl --report tracking.html
+```
+
+双击打开 `tracking.html`。报告列出 23 帧，10 至 23 秒的眼部观测连续显示“无法判断”，第 24 秒恢复睁眼，整段发出提醒 0 次。选中“只看发出或撤回提醒的帧”可以筛选动作。换用 `examples/fatigue.jsonl` 便能看到一对提醒和撤回，分别出现在 12500 和 13250 毫秒。报告可离线转发，其中包括输入文件名、逐帧时间和判断结果。
+
+需要逐行 JSON 输出时，直接运行：
 
 ```sh
 python -m eyeseeyou_edge examples/tracking_loss.jsonl

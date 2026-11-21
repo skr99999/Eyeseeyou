@@ -8,6 +8,7 @@ import sys
 
 from .fatigue import TemporalFatigueEngine
 from .models import FaceResult, VisionMetrics, VisionObservation
+from .report import write_report
 
 
 def unique_object(pairs):
@@ -99,12 +100,18 @@ def replay(source):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("input", type=Path, help="UTF-8 JSONL file")
+    parser.add_argument("--report", type=Path, metavar="FILE.html", help="write a standalone HTML replay report")
     args = parser.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
     try:
         with args.input.open("rb") as source:
-            for decision in replay(source):
-                print(json.dumps(decision, ensure_ascii=False, allow_nan=False))
+            if args.report is not None:
+                if args.report.exists() and args.report.samefile(args.input):
+                    parser.error("report and input must be different files")
+                write_report(args.report, args.input.name, replay(source))
+            else:
+                for decision in replay(source):
+                    print(json.dumps(decision, ensure_ascii=False, allow_nan=False))
     except (OSError, ValueError) as exc:
         parser.exit(2, f"{args.input}: {exc}\n")
 

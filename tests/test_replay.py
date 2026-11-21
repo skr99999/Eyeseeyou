@@ -1,4 +1,5 @@
 import json
+from html.parser import HTMLParser
 from pathlib import Path
 import subprocess
 import sys
@@ -9,15 +10,61 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def run_replay(path):
+def run_replay(path, *options):
     return subprocess.run(
-        [sys.executable, "-B", "-m", "eyeseeyou_edge", str(path)],
+        [sys.executable, "-B", "-m", "eyeseeyou_edge", str(path), *options],
         cwd=ROOT,
         capture_output=True,
     )
 
 
 class ReplayTest(unittest.TestCase):
+    def test_offline_report_matches_replay(self):
+        class ReportRows(HTMLParser):
+            def __init__(self):
+                super().__init__()
+                self.rows = []
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == "tr" and "id" in attrs:
+                    self.rows.append((attrs["id"], attrs.get("class", "")))
+
+        with TemporaryDirectory() as temp_dir:
+            report = Path(temp_dir) / "report.html"
+            for name in ("fatigue", "camera_gap", "tracking_loss"):
+                with self.subTest(name=name):
+                    sample = ROOT / "examples" / f"{name}.jsonl"
+                    expected = list(map(json.loads, run_replay(sample).stdout.splitlines()))
+                    result = run_replay(sample, "--report", report)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    html = report.read_text(encoding="utf-8")
+                    parsed = ReportRows()
+                    parsed.feed(html)
+                    self.assertEqual(parsed.rows, [
+                        (f"t-{row['t_ms']}", row["action"] or "") for row in expected
+                    ])
+                    if name == "camera_gap":
+                        self.assertIn("3300 ms", html)
+                    if name == "tracking_loss":
+                        self.assertIn("提醒 0 次", html)
+
+    def test_failed_report_preserves_files(self):
+        with TemporaryDirectory() as temp_dir:
+            sample = Path(temp_dir) / "input.jsonl"
+            good = (ROOT / "examples" / "fatigue.jsonl").read_bytes().splitlines()[0]
+            sample.write_bytes(good + b"\n{\n")
+            report = Path(temp_dir) / "report.html"
+            report.write_text("previous report", encoding="utf-8")
+            result = run_replay(sample, "--report", report)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn(b"line 2", result.stderr)
+            self.assertEqual(report.read_text(encoding="utf-8"), "previous report")
+            before = sample.read_bytes()
+            self.assertEqual(run_replay(sample, "--report", sample).returncode, 2)
+            self.assertEqual(sample.read_bytes(), before)
+            self.assertEqual(set(Path(temp_dir).iterdir()), {sample, report})
+
     def test_synthetic_replay(self):
         sample = ROOT / "examples" / "fatigue.jsonl"
         result = run_replay(sample)
