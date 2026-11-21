@@ -4,10 +4,12 @@
 
 ### Windows 桌面版
 
-[下载 Windows x64 安装包（0.2.0）](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.2.0/EyeSeeYou-Edge-0.2.0-Windows-x64.msi)。双击 MSI 完成安装，从开始菜单打开 **EyeSeeYou Edge**。安装包包含 Python 和图形界面，可离线使用。
+[下载 Windows x64 安装包（0.2.1）](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.2.1/EyeSeeYou-Edge-0.2.1-Windows-x64.msi)。双击 MSI 完成安装，从开始菜单打开 **EyeSeeYou Edge**。安装包包含 Python 和图形界面，可离线使用。
+
+![Windows 桌面版实机截图。左侧查看所选观测帧，中间显示该帧的疲劳状态，右侧是背单词计划。](docs/windows-desktop.png)
 
 - **学习与专注**：输入“背单词 20 分钟”，预览分段计划，点“确认开始”。支持暂停、继续、结束与分段加时。关闭应用会保存进度，重新打开后由你确认继续。
-- **观测回放**：载入内置示例或自己的 JSONL，生成 HTML 报告并在浏览器中打开。学习进度保存在当前用户的 `%LOCALAPPDATA%\EyeSeeYou Edge`，报告位置由你选择。桌面版使用手动专注计时和日志回放，不调用摄像头。
+- **观测回放**：启动后即可查看内置样例。点击底部的「12.5s 发出提醒」和「13.25s 撤回提醒」，对照曲线查看规则何时触发、何时恢复。也可以打开自己的 JSONL，屏幕预览前 240 帧，HTML 报告包含整段日志。学习进度保存在当前用户的 `%LOCALAPPDATA%\EyeSeeYou Edge`。桌面版使用手动专注计时和日志回放。
 
 开发运行使用 `python -m eyeseeyou_edge.desktop`（需要 Tk）。在 64 位 Windows、CPython 3.13 的虚拟环境中执行 `python -m pip install cx-Freeze==8.7.4` 和 `python windows/build_msi.py bdist_msi` 可重新构建安装包，产物位于 `windows/dist/`。
 

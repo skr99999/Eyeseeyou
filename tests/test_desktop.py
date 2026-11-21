@@ -23,7 +23,7 @@ class DesktopSessionTest(unittest.TestCase):
             try:
                 app.primary.invoke()
                 self.assertEqual(app.focus.current.state, "IDLE")
-                self.assertIn("回忆测试", app.outline.cget("text"))
+                self.assertIn(("回忆测试", 600), app.shown_steps[0])
                 app.goal.set("读书 1 分钟")
                 self.assertIsNone(app.plan)
                 app.primary.invoke()
@@ -34,6 +34,15 @@ class DesktopSessionTest(unittest.TestCase):
                 app.primary.invoke()
                 self.assertEqual(app.focus.current.state, "RUNNING")
                 app.select(Path(__file__).resolve().parents[1] / "examples" / "fatigue.jsonl")
+                view = app.replay_view
+                self.assertEqual(view.state.cget("text"), "FATIGUE")
+                self.assertIn("12.5 秒", view.position.cget("text"))
+                app.events.winfo_children()[-1].invoke()
+                self.assertEqual(view.state.cget("text"), "RECOVERING")
+                self.assertIn("13.25 秒", view.position.cget("text"))
+                view.slider.set(len(view.rows)-1)
+                view.draw()
+                self.assertEqual(view.state.cget("text"), "NORMAL")
                 target = Path(temp) / "report.html"
                 with patch("tkinter.filedialog.asksaveasfilename", return_value=str(target)):
                     app.export.invoke()

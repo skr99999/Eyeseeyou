@@ -1,6 +1,7 @@
 """Local study planner, focus timer and observation replay desktop application."""
 
 from concurrent.futures import ThreadPoolExecutor
+from itertools import islice
 from math import ceil
 import os
 from pathlib import Path
@@ -10,6 +11,7 @@ from tkinter import filedialog, messagebox, ttk
 import webbrowser
 
 from .database import Database
+from .desktop_view import BLUE, INK, MUTED, PAPER, SKY, TEAL, ReplayView, brand, card, label
 from .focus import FocusSessionController
 from .plan import confirm_plan, preview_plan
 from .replay import replay
@@ -32,56 +34,91 @@ class Desktop:
         self.source = self.report = self.job = None
         self.worker = ThreadPoolExecutor(max_workers=1)
         root.title("EyeSeeYou Edge")
-        root.geometry("730x570")
-        root.minsize(630, 520)
+        root.geometry(f"{min(1140, root.winfo_screenwidth()-45)}x{min(585, root.winfo_screenheight()-85)}")
+        root.minsize(885, 550)
+        root.configure(bg=SKY)
         root.option_add("*Font", "{Microsoft YaHei UI} 10")
         style = ttk.Style(root)
-        style.configure("TButton", padding=(10, 5))
-        style.configure("Timer.TLabel", foreground="#155548", font=("Consolas", 34, "bold"))
-        head = tk.Frame(root, bg="#173e35", padx=22, pady=12)
+        style.theme_use("clam")
+        style.configure("TButton", padding=(8, 5), background="#eff5fc", foreground=INK, borderwidth=1,
+                        bordercolor="#d5e1ed", lightcolor="#eff5fc", darkcolor="#eff5fc")
+        style.map("TButton", background=[("active", "#deebfc")])
+        style.configure("Primary.TButton", background=BLUE, foreground=PAPER,
+                        lightcolor=BLUE, darkcolor=BLUE, bordercolor=BLUE)
+        style.map("Primary.TButton", background=[("active", "#1d4ed8")])
+        style.configure("Horizontal.TScale", troughcolor="#e3edf6", background="#8db9e8",
+                        bordercolor="#d4e4f4", lightcolor="#cce0f5", darkcolor="#8db9e8")
+        style.configure("Horizontal.TProgressbar", background=BLUE, troughcolor="#e3edf6",
+                        borderwidth=0, lightcolor=BLUE, darkcolor=BLUE)
+        head = tk.Frame(root, bg=PAPER, padx=20, pady=10)
         head.pack(fill="x")
-        tk.Label(head, text="EyeSeeYou Edge", fg="white", bg="#173e35",
-                 font=("Segoe UI", 18, "bold")).pack(anchor="w")
-        tabs = ttk.Notebook(root)
-        tabs.pack(fill="both", expand=True, padx=16, pady=12)
-        study, logs = ttk.Frame(tabs, padding=16), ttk.Frame(tabs, padding=16)
-        tabs.add(study, text="学习与专注")
-        tabs.add(logs, text="观测回放")
-        ttk.Label(study, text="学习目标与时长").pack(anchor="w")
+        brand(head)
+        session = tk.Frame(head, bg=PAPER)
+        session.pack(side="left", padx=(35, 12))
+        self.session_state = label(session, "专注会话", 9, MUTED)
+        self.session_state.pack(anchor="w")
+        self.timer = label(session, size=25, color="#b66b09", bold=True)
+        self.timer.configure(font=("Consolas", 26, "bold"))
+        self.timer.pack(anchor="w")
+        self.primary = ttk.Button(head, command=self.advance, style="Primary.TButton")
+        self.primary.pack(side="left", padx=3)
+        self.extend = ttk.Button(head, text="本段加时", command=lambda: self.command(
+            "resolve_segment", {"completed": False, "source": "desktop"}))
+        self.end = ttk.Button(head, text="结束专注", command=self.stop)
+        self.end.pack(side="left", padx=3)
+        label(head, "Windows  ·  离线桌面版", 9, TEAL).pack(side="right")
+
+        board = tk.Frame(root, bg=SKY)
+        board.pack(fill="both", expand=True, padx=9, pady=8)
+        for i, weight in enumerate((40, 26, 34)):
+            board.columnconfigure(i, weight=weight, uniform="panels")
+        board.rowconfigure(0, weight=1)
+        board.rowconfigure(1, minsize=110)
+        chart, state, study = (card(board, 0, i) for i in range(3))
+        label(chart, "观测回放", 16, bold=True).pack(anchor="w")
+        self.filename = label(chart, "请选择观测日志", 9, MUTED)
+        self.filename.pack(anchor="w")
+        label(state, "疲劳状态", 16, bold=True).pack(anchor="w")
+        label(state, "所选回放帧", 9, MUTED).pack(anchor="w")
+        self.replay_view = ReplayView(chart, state)
+        files = tk.Frame(chart, bg=PAPER)
+        files.pack(anchor="w", pady=(7, 0))
+        ttk.Button(files, text="打开日志…", command=self.choose_source).pack(side="left")
+        assets = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[1]
+        self.demo = assets / "examples" / "fatigue.jsonl"
+        if self.demo.is_file():
+            ttk.Button(files, text="内置样例", command=lambda: self.select(self.demo)).pack(side="left", padx=6)
+
+        label(study, "学习助理", 16, bold=True).pack(anchor="w")
+        label(study, "学习目标与时长", 9, MUTED).pack(anchor="w", pady=(6, 3))
         self.goal = tk.StringVar(value=self.focus.current.current_task or "背单词 20 分钟")
         self.entry = ttk.Entry(study, textvariable=self.goal)
-        self.entry.pack(fill="x", pady=(4, 8))
+        self.entry.pack(fill="x", ipady=4)
+        self.entry.bind("<Return>", lambda _: self.advance())
         self.goal.trace_add("write", self.invalidate_preview)
-        self.outline = ttk.Label(study, justify="left", wraplength=550)
-        self.outline.pack(anchor="w")
-        self.timer = ttk.Label(study, style="Timer.TLabel")
-        self.timer.pack(anchor="w", pady=(10, 0))
-        self.status = ttk.Label(study, wraplength=550)
-        self.status.pack(anchor="w", pady=(0, 10))
-        actions = ttk.Frame(study)
-        actions.pack(fill="x")
-        self.primary = ttk.Button(actions, command=self.advance)
-        self.primary.pack(side="left")
-        self.extend = ttk.Button(actions, text="本段加时", command=lambda: self.command(
-            "resolve_segment", {"completed": False, "source": "desktop"}))
-        self.end = ttk.Button(actions, text="结束本次专注", command=self.stop)
-        self.end.pack(side="right")
-        ttk.Label(logs, text="打开观测日志，查看每一帧的判断与提醒。", wraplength=540).pack(anchor="w")
-        files = ttk.Frame(logs)
-        files.pack(fill="x", pady=10)
-        ttk.Button(files, text="选择 JSONL 日志…", command=self.choose_source).pack(side="left")
-        assets = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[1]
-        demo = assets / "examples" / "fatigue.jsonl"
-        if demo.is_file():
-            ttk.Button(files, text="载入疲劳提醒示例", command=lambda: self.select(demo)).pack(side="left", padx=6)
-        self.filename = ttk.Label(logs, text="尚未选择日志", wraplength=550)
-        self.filename.pack(anchor="w", pady=8)
-        self.export = ttk.Button(logs, text="生成 HTML 报告…", command=self.save_report, state="disabled")
-        self.export.pack(anchor="w", pady=5)
-        self.message = ttk.Label(logs, wraplength=550)
-        self.message.pack(anchor="w", pady=6)
-        self.open_report = ttk.Button(logs, text="打开报告", state="disabled", command=self.open_html)
-        self.open_report.pack(anchor="w")
+        self.status = label(study, color=MUTED, wraplength=225)
+        self.status.pack(anchor="w", pady=8)
+        self.steps = tk.Frame(study, bg=PAPER)
+        self.steps.pack(fill="x")
+        self.shown_steps = None
+        self.progress = ttk.Progressbar(study, maximum=100)
+
+        history = card(board, 1, 0)
+        label(history, "回放事件", 14, bold=True).pack(anchor="w")
+        self.events = tk.Frame(history, bg=PAPER)
+        self.events.pack(anchor="w", pady=(3, 0))
+        report = card(board, 1, 1, 2)
+        buttons = tk.Frame(report, bg=PAPER)
+        buttons.pack(side="right", padx=(15, 0))
+        self.export = ttk.Button(buttons, text="生成 HTML 报告…", command=self.save_report, state="disabled")
+        self.export.pack(side="left", padx=5)
+        self.open_report = ttk.Button(buttons, text="打开报告", state="disabled", command=self.open_html)
+        self.open_report.pack(side="left")
+        label(report, "回放报告", 15, bold=True).pack(anchor="w")
+        self.message = label(report, color=MUTED, wraplength=285)
+        self.message.pack(anchor="w")
+        if self.demo.is_file():
+            self.select(self.demo)
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.tick()
 
@@ -123,11 +160,40 @@ class Desktop:
         s = self.focus.current
         active = s.state in {"RUNNING", "PAUSED", "AWAY"}
         plan = s.plan if active else self.plan
-        outline = "\n".join(f"{i}. {item['label']}    {item['seconds'] // 60} 分 {item['seconds'] % 60:02} 秒"
-                            for i, item in enumerate(plan["subtasks"], 1)) if plan else ""
-        self.outline.configure(text=outline)
+        elapsed = s.duration_seconds - s.remaining_seconds if active else 0
+        steps = tuple((item["label"], round(item["seconds"])) for item in plan["subtasks"]) if plan else ()
+        current = -1
+        if active:
+            boundary = 0
+            for i, (_, duration) in enumerate(steps):
+                boundary += duration
+                if elapsed < boundary or s.segment_review_index == i:
+                    current = i
+                    break
+        if (steps, current) != self.shown_steps:
+            self.shown_steps = steps, current
+            for widget in self.steps.winfo_children():
+                widget.destroy()
+            for i, (name, duration) in enumerate(steps):
+                bg = "#dfedff" if i == current else "#f2f6fb"
+                row = tk.Frame(self.steps, bg=bg, padx=8, pady=3, highlightthickness=1,
+                               highlightbackground=BLUE if i == current else "#e5edf3")
+                row.pack(fill="x", pady=2)
+                badge = label(row, str(i+1), 9, PAPER, bold=True, padx=4)
+                badge.configure(bg=BLUE)
+                badge.pack(side="left", padx=(0, 8))
+                label(row, name, bold=(i == current)).pack(side="left")
+                minutes, sec = divmod(duration, 60)
+                label(row, f"{minutes}:{sec:02d}", 10, MUTED).pack(side="right")
+        if active and s.duration_seconds:
+            self.progress.configure(value=100*elapsed/s.duration_seconds)
+            self.progress.pack(fill="x", pady=(8, 0))
+        else:
+            self.progress.pack_forget()
+        states = {"RUNNING": "进行中", "PAUSED": "已暂停", "AWAY": "离席", "COMPLETED": "已完成"}
+        self.session_state.configure(text="专注会话  ·  " + states.get(s.state, "待开始"))
         seconds = ceil(s.remaining_seconds) if active else plan["total_seconds"] if plan else 0
-        self.timer.configure(text=f"{seconds // 60:02}:{seconds % 60:02}")
+        self.timer.configure(text=f"{int(seconds) // 60:02}:{int(seconds) % 60:02}")
         self.entry.configure(state="disabled" if active else "normal")
         self.end.configure(state="normal" if active else "disabled")
         if s.segment_review_ready and active:
@@ -160,11 +226,29 @@ class Desktop:
     def select(self, source):
         if self.job is not None:
             return
+        try:
+            with source.open("rb") as stream:
+                rows = list(islice(replay(stream), 241))
+        except (OSError, ValueError) as error:
+            messagebox.showerror("观测回放", str(error), parent=self.root)
+            return
         self.source, self.report = source, None
-        self.filename.configure(text=source.name)
+        prefix = "内置样例" if source == self.demo else "本地日志"
+        self.filename.configure(text=f"{prefix}  ·  {source.name}")
+        self.replay_view.load(rows[:240])
+        for widget in self.events.winfo_children():
+            widget.destroy()
+        events = [(i, row) for i, row in enumerate(rows[:240]) if row["action"]]
+        for i, row in events[-2:]:
+            action = "发出提醒" if row["action"] == "request_fatigue_alert" else "撤回提醒"
+            ttk.Button(self.events, text=f"{row['t_ms']/1000:g}s  {action}",
+                       command=lambda n=i: self.replay_view.slider.set(n)).pack(side="left", padx=(0, 5))
+        if not events:
+            label(self.events, "预览范围内没有提醒事件", 9, MUTED).pack()
         self.export.configure(state="normal")
         self.open_report.configure(state="disabled")
-        self.message.configure(text="")
+        self.message.configure(text="已预览前 240 帧，导出报告可查看完整日志。" if len(rows) > 240
+                               else f"{source.name}  ·  共 {len(rows)} 帧，可导出逐帧判断和提醒记录。")
 
     def save_report(self):
         name = filedialog.asksaveasfilename(parent=self.root, initialfile=self.source.stem + ".html",
@@ -179,6 +263,8 @@ class Desktop:
         self.root.after(100, self.check_export)
 
     def check_export(self):
+        if self.job is None:
+            return
         if not self.job.done():
             self.root.after(100, self.check_export)
             return
