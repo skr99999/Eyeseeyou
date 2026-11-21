@@ -6,6 +6,33 @@ from eyeseeyou_edge.__main__ import replay
 
 
 class EvidenceGapTest(unittest.TestCase):
+    def test_tracking_loss_does_not_bridge_perclos_windows(self):
+        sample = Path(__file__).resolve().parents[1] / "examples" / "tracking_loss.jsonl"
+        lines = sample.read_bytes().splitlines()
+        for face_found in (True, False):
+            with self.subTest(face_found=face_found):
+                rows = [json.loads(line) for line in lines]
+                for row in rows:
+                    if row["eye_state"] == "UNCERTAIN" and not face_found:
+                        row.update(face_found=False, ear=None, mar=None)
+                decisions = list(replay(json.dumps(row).encode() for row in rows))
+                self.assertEqual(decisions[-1]["perclos"], 0.0)
+                self.assertEqual(decisions[-1]["state"], "NORMAL" if face_found else "RECOVERING")
+                self.assertFalse(any(item["action"] for item in decisions))
+
+    def test_valid_observations_still_trigger_perclos_warning(self):
+        sample = Path(__file__).resolve().parents[1] / "examples" / "tracking_loss.jsonl"
+        rows = sample.read_bytes().splitlines()[:5]
+        for i in range(1, 81):
+            closed = i % 4 in (1, 2)
+            row = dict(t_ms=8000 + i * 200, face_found=True, eye_state="CLOSED" if closed else "OPEN",
+                       ear=0.1 if closed else 0.3, mar=0.1)
+            rows.append(json.dumps(row).encode())
+        decisions = list(replay(rows))
+        self.assertEqual([item["t_ms"] for item in decisions if item["action"]], [23000])
+        self.assertEqual(decisions[-1]["state"], "WARNING")
+        self.assertTrue(all(item["eye_closed_seconds"] < 1.5 for item in decisions))
+
     def test_camera_gap_then_continuous_closure(self):
         sample = Path(__file__).resolve().parents[1] / "examples" / "camera_gap.jsonl"
         rows = sample.read_bytes().splitlines()

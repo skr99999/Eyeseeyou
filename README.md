@@ -1,10 +1,24 @@
 # EyeSeeYou Edge · 可回放的端侧专注 Agent
 
-一次正常眨眼、摄像头丢了人脸、持续闭眼，应该引发三种不同的处理。EyeSeeYou Edge 从团队在 A210 开发板上做的学习助手中抽出决策代码，让开发者把一段观测重新喂给 Agent，逐帧查出它为什么提醒、何时撤回，以及哪些动作需要用户确认。
+[![离线回归测试](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml) · Python 3.10+ · [MIT](LICENSE)
 
-**A replayable edge agent for focus sessions and fatigue alerts.** Run the original A210 decision logic on timestamped observations. Inspect every alert locally with Python, synthetic data and no API key.
+EyeSeeYou Edge 把团队 A210 学习助手的判断过程搬到了普通电脑上。给它一段带时间戳的眼口观测，就能逐帧查出哪一帧触发了疲劳提醒、哪一帧撤回。专注会话也能回放，从生成学习计划，到离席暂停、回座后由用户确认继续。
 
-## 两分钟运行
+*Replay an edge agent’s alerts and focus sessions locally, using timestamped observations and Python’s standard library.*
+
+![同一段合成输入，第 24 秒重新睁眼。旧版沿用失效观测之前的样本，按 40% 闭眼占比发出提醒；修复后重新建立窗口，首帧闭眼占比为 0%，没有提醒。](docs/tracking-replay.png)
+
+## 复现图中的误报
+
+用 Python 3.10 或更高版本，在仓库根目录运行一条命令。示例已随仓提供，无需安装依赖、连接摄像头或配置密钥。
+
+```sh
+python -m eyeseeyou_edge examples/tracking_loss.jsonl
+```
+
+看最后一行的 `t_ms=24000`。摄像头在第 10 至 23 秒每秒都送来一帧，但眼睛一直无法辨认。旧版把失去跟踪前后的 **5 个有效样本**拼成了一个足够长的窗口，其中 2 个被判闭眼，导致睁眼时反而发出提醒。现在，距离上一次有效眼部观测超过 1 秒就重建窗口。这一帧输出 `state="NORMAL"`、`perclos=0.0`、`action=null`。[原始输入](examples/tracking_loss.jsonl) · [修复前源码](https://github.com/skr99999/eyeseeyou-edge/tree/a543e174a959b70225dc04dd01142ccce0801164) · [回归测试和持续有效观测的对照组](tests/test_evidence_gap.py)
+
+## 回放疲劳提醒与专注会话
 
 下载本仓库 ZIP 后解压，或用 Git 克隆，在仓库根目录打开终端。需要 Python 3.10 或更高版本。运行依赖均在 Python 标准库内。
 
@@ -48,11 +62,21 @@ python -B -m unittest discover -s tests -v
 
 | 能力 | 本仓库提供的实现 |
 | --- | --- |
-| 疲劳判断 | 原 A210 时间规则、校准和状态模型，外加缺面时中断连续闭眼证据的修正。PERCLOS 在这里按滑窗中有效样本的闭眼占比计算，比较实验应使用稳定采样率。 |
+| 疲劳判断 | 保留 A210 时间规则、校准和状态模型。缺面或断流会打断连续闭眼计时；持续失去有效眼部观测会重建闭眼占比窗口。字段 `perclos` 是滑窗中有效样本的闭眼占比，宜在稳定采样率下比较。 |
 | 学习计划与行动 | 根据目标及时长在本地拆分子任务；校验确认后的计划，再交给专注状态机执行。可回放离席与恢复。 |
 | 板端视觉与语言模型 | 暑期系统有摄像头、板端视觉推理和可选的外部语言服务。本仓从观测输入开始运行，计划默认使用本地模板。 |
 
-回放验证的是给定输入下的决策。真人疲劳识别准确率、现场帧率和耗电都需要另外测量。项目面向学习辅助与软件实验。
+### 怎样读这些结果
+
+| 要核对的问题 | 可复现的结果 |
+| --- | --- |
+| 摄像头直接断流，恢复首帧会怎样？ | 相隔 3.3 秒后恢复，闭眼计时从 0 开始。持续收到闭眼观测后仍会在 1.5 秒触发提醒。[输入](examples/camera_gap.jsonl) · [续接帧与断言](tests/test_evidence_gap.py) |
+| 排除了失效帧，会漏掉闭眼占比提醒吗？ | 对照序列每 200 毫秒采一帧，多次短闭眼始终低于长闭眼阈值。第 23 秒，闭眼占比规则独立触发提醒。[对照测试](tests/test_evidence_gap.py) |
+| 回座会直接扣减剩余时间吗？ | 回座后保持 1169 秒，用户确认后恢复，下一秒才降到 1168 秒。[会话示例](examples/away_return.py) |
+
+上述结果来自合成观测，验证从观测到动作的规则。真人使用时的误提醒次数、漏提醒次数、A210 现场帧率和功耗仍待实测。文献中也有按眼睑闭合**时间**和独立警觉性任务做对照的实验；复用这里的样本占比时，请同时记录采样间隔、无效帧和判定口径。[PERCLOS 原始实验](https://doi.org/10.1016/j.ijpsycho.2011.09.012)
+
+首页把输入和动作放在同一条时间线上，参考了 [Rerun 的时间序列回放](https://github.com/rerun-io/rerun)。单独展示跟踪状态的做法可对照 [OpenFace 的输出字段](https://github.com/TadasBaltrusaitis/OpenFace/wiki/Output-Format)。按使用场景交代评测条件与局限的写法参考了 [Model Cards for Model Reporting](https://research.google/pubs/model-cards-for-model-reporting/)。
 
 ## 开发与许可
 

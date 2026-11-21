@@ -112,9 +112,10 @@ class TemporalFatigueEngine:
         gap = (self.last_observation_at is not None
                and round(now - self.last_observation_at, 6) > self.max_observation_gap)
         self.last_observation_at = now
-        if gap:
-            # Time spent offline cannot establish PERCLOS coverage or a continuous absence.
+        # Frames can keep arriving while neither eye is trackable.
+        if self.closed_history and round(now - self.closed_history[-1][0], 6) > self.max_observation_gap:
             self.closed_history.clear()
+        if gap:
             self.face_missing_since = None
         if gap or not valid:
             self.closed_candidate_frames = self.open_candidate_frames = 0
