@@ -65,7 +65,15 @@ with open("observations.jsonl", "rb") as observations:
             print(frame["t_ms"], frame["action"])
 ```
 
-将自己的观测文件命名为 `observations.jsonl`，或用下面的格式准备输入。完整示例也可直接使用仓库的 `examples/fatigue.jsonl`。
+将自己的观测文件命名为 `observations.jsonl`，或使用仓库的 `examples/fatigue.jsonl`。安装后用一条命令试跑[独立接入示例](examples/check_session.py)：
+
+```sh
+python -I examples/check_session.py examples/fatigue.jsonl
+```
+
+它汇总每次发出、撤回提醒的输入时间戳。在这份样例中各发生一次，分别是 12500 和 13250 毫秒。示例来自一次模拟第三方接入：开发者角色只阅读公开 README，在新虚拟环境中编写调用程序。
+
+**错误处理。** Python 的 `replay()` 是惰性迭代器。遇到坏行时会抛出含行号的 `ValueError`，此前的帧可能已经交给调用方。需要整场统计时，请在迭代全部成功后再输出。独立示例演示了如何补上文件路径并返回退出码。
 
 每行一个 UTF-8 JSON 对象，五个字段均为必填。下面是一帧有效观测，以及随后一次明确的缺面。完整可运行输入见 [合成样本](examples/fatigue.jsonl)。
 
@@ -77,7 +85,7 @@ with open("observations.jsonl", "rb") as observations:
 - `t_ms` 是严格递增的非负整数毫秒。内部以首帧为时间原点。
 - `eye_state` 可选 `OPEN`、`CLOSED`、`UNCERTAIN`。`ear` 和 `mar` 是眼睛、嘴部的纵横比。有脸时应为非负有限数，缺面时填 `null` 并将眼部状态标为 `UNCERTAIN`。
 - 输入只接收这五个字段。有观测但未检测到人脸时，请显式记录缺面。相邻观测间隔超过 1 秒时，恢复首帧重新开始累计闭眼和张嘴时长，并重建闭眼占比窗口。间隔恰好 1 秒仍允许连续计时。采集端可按实际采样间隔设置 `fatigue.max_observation_gap_seconds`。
-- 每行结果含判断理由 `reasons`、当前风险标志 `alarm` 和动作 `action`。动作描述可供上层程序消费，回放自身只打印结果。格式错误时会指出文件、行号并以状态码 2 退出，之前的有效行已经输出。
+- 每行结果含判断理由 `reasons`、当前风险标志 `alarm` 和动作 `action`。命令行回放会打印这些判断。格式错误时，命令行指出文件、行号并以状态码 2 退出，之前的有效行已经输出。
 
 运行 `python -m eyeseeyou_edge examples/camera_gap.jsonl` 可复现一次断流：9.0 秒和 9.2 秒观测到闭眼，下一帧在 12.5 秒到达。该帧的 `eye_closed_seconds` 为 0，`action` 为 `null`。
 
