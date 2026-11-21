@@ -1,6 +1,6 @@
-# EyeSeeYou Edge · 摄像头驱动的专注计时与疲劳提醒
+# EyeSeeYou 摄像头驱动的专注计时与疲劳提醒
 
-EyeSeeYou Edge 把团队 A210 开发板上的学习助手搬到了 Windows。打开电脑摄像头，用一个 OK 手势开始学习；持续闭眼时，界面会显示触发提醒的原因和时长。摄像头画面和关键点在本机内存中处理，学习进度保存在当前用户的电脑上。
+EyeSeeYou 把团队 A210 开发板上的学习助手搬到了 Windows。打开电脑摄像头，用一个 OK 手势开始学习；持续闭眼时，界面会显示触发提醒的原因和时长。摄像头画面和关键点在本机内存中处理，学习进度保存在当前用户的电脑上。
 
 **[下载 Windows x64 安装包 · v0.3.0（约 91 MiB）](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.3.0/EyeSeeYou-Edge-0.3.0-Windows-x64.msi)** · [版本说明与 SHA-256](https://github.com/skr99999/eyeseeyou-edge/releases/tag/v0.3.0) · [回归测试](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml) · [MIT](LICENSE)
 
