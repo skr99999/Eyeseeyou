@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e7f2ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="EyeSeeYou">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./style.css?v=3">
+  <link rel="stylesheet" href="./guide-camera.css">
+  <title>EyeSeeYou Edge</title>
+  <script defer src="./replay-data.js"></script>
+  <script defer src="./app.js"></script>
+  <script defer src="./guide.js"></script>
+  <script type="module" src="./vision.js"></script>
+</head>
+<body>
+  <header class="brand">
+    <img src="./icon-192.png" alt="" width="42" height="42">
+    <h1>EyeSeeYou <span>Edge</span></h1>
+    <button id="guide-open" class="guide-entry secondary" type="button">使用教学</button>
+  </header>
+  <main>
+    <section class="card" id="focus">
+      <h2>专注计时</h2>
+      <p class="task" id="current-task">准备开始</p>
+      <output class="clock" id="clock" aria-label="剩余时间">20:00</output>
+      <p class="hint" id="timer-status" role="status">预览学习计划后即可开始</p>
+      <div class="controls">
+        <button id="timer-toggle" type="button" disabled>开始专注</button>
+        <button class="secondary" id="timer-end" type="button" hidden>结束并保存</button>
+      </div>
+    </section>
+    <section class="card" id="study">
+      <h2>学习助理</h2>
+      <form id="plan-form">
+        <label for="goal">学习目标</label>
+        <input id="goal" maxlength="100" value="背单词" required>
+        <div class="plan-controls">
+          <label>时长（分钟）<input id="minutes" type="number" inputmode="numeric" min="1" max="180" step="1" value="20" required></label>
+          <button class="secondary" id="preview" type="submit">预览计划</button>
+        </div>
+      </form>
+      <p id="plan-status" class="hint" role="status" hidden></p>
+      <ol id="plan-steps" hidden></ol>
+    </section>
+    <section class="card" id="camera">
+      <h2>实时摄像头</h2>
+      <p class="hint" id="camera-privacy">在此设备上分析画面。画面和关键点保留在内存中。</p>
+      <div class="controls">
+        <button id="camera-start" type="button" aria-describedby="camera-privacy">开启摄像头</button>
+        <button id="camera-stop" class="secondary" type="button" hidden>关闭摄像头</button>
+      </div>
+      <video id="camera-preview" playsinline muted autoplay aria-label="前置摄像头预览" hidden></video>
+      <p id="camera-status" class="hint" role="status">摄像头已关闭</p>
+      <p id="camera-alert" role="alert" hidden></p>
+      <p id="camera-gesture" class="hint" role="status" hidden></p>
+      <p class="hint">将一只手完整放入画面，保持约 1 秒。OK 开始或继续，张掌暂停，握拳结束并保存。</p>
+    </section>
+    <section class="card" id="replay">
+      <h2>样例回放</h2>
+      <p class="hint">使用仓库内置的合成观测与判定结果。</p>
+      <label for="sample">选择样例</label>
+      <select id="sample">
+        <option value="fatigue">闭眼提醒与恢复</option>
+        <option value="tracking_loss">跟踪中断与恢复</option>
+        <option value="camera_gap">采样间隔与恢复</option>
+      </select>
+      <canvas id="chart" width="600" height="160" aria-label="闭眼占比曲线"></canvas>
+      <label for="frame">回放位置</label>
+      <input id="frame" type="range" min="0" value="0">
+      <div class="controls replay-controls">
+        <button id="play" class="secondary" type="button">播放</button>
+        <div id="events" class="controls"></div>
+      </div>
+      <p class="hint" id="position"></p>
+      <p class="result" id="result"></p>
+      <dl class="metrics">
+        <div><dt>闭眼占比</dt><dd id="perclos"></dd></div>
+        <div><dt>连续闭眼</dt><dd id="closed"></dd></div>
+        <div><dt>累计眨眼</dt><dd id="blinks"></dd></div>
+        <div><dt>风险分数</dt><dd id="risk"></dd></div>
+      </dl>
+    </section>
+    <section class="card">
+      <h2>专注记录</h2>
+      <p id="empty-history" class="hint">结束或完成专注后，记录将保存在本机。</p>
+      <ul id="history"></ul>
+    </section>
+  </main>
+  <dialog id="guide" aria-labelledby="guide-title" aria-describedby="guide-detail">
+    <button id="guide-close" class="guide-close" type="button" aria-label="关闭本次使用教学" autofocus>×</button>
+    <div class="guide-illustration" aria-hidden="true">
+      <div class="guide-scene guide-plan" data-guide-scene>
+        <div class="guide-demo">
+          <div class="guide-demo-label">学习助理</div>
+          <div class="guide-field">背单词 <span>20 分钟</span></div>
+          <span class="guide-pill guide-preview">预览计划</span>
+          <div class="guide-demo-steps">
+            <div>词汇学习 <span>7 分钟</span></div>
+            <div>回忆测试 <span>10 分钟</span></div>
+            <div>错词复盘 <span>3 分钟</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="guide-scene guide-focus" data-guide-scene hidden>
+        <div class="guide-demo">
+          <div class="guide-demo-label">专注计时 · 背单词</div>
+          <div class="guide-demo-time"><span class="guide-before">20:00</span><span class="guide-after">19:58</span></div>
+          <div class="guide-demo-action"><span class="guide-pill guide-before">开始专注</span><span class="guide-pill guide-after">暂停</span><span class="guide-pill guide-paused">继续专注</span></div>
+        </div>
+      </div>
+      <div class="guide-scene guide-replay" data-guide-scene hidden>
+        <div class="guide-demo">
+          <div class="guide-demo-label">样例回放 · 闭眼提醒与恢复</div>
+          <svg class="guide-plot" viewBox="0 0 252 74" aria-hidden="true">
+            <path d="M12 21H240M12 40H240M12 59H240" stroke="#355069" fill="none"/>
+            <polyline id="guide-curve" stroke="#7dd3fc" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+            <circle id="guide-alert-marker" class="guide-alert-marker" r="4" fill="#fda18b"/>
+            <circle id="guide-clear-marker" class="guide-clear-marker" r="4" fill="#fff"/>
+          </svg>
+          <div class="guide-replay-actions"><span class="guide-pill">12.5s 发出提醒</span><span class="guide-pill">13.25s 撤回提醒</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="guide-progress" id="guide-progress"></p>
+    <div role="status" aria-live="polite" aria-atomic="true">
+      <h2 id="guide-title"></h2>
+      <p id="guide-detail"></p>
+    </div>
+    <div class="guide-controls">
+      <button id="guide-previous" class="secondary" type="button">上一步</button>
+      <button id="guide-next" type="button">下一步</button>
+    </div>
+    <button id="guide-disable" class="guide-text-button" type="button">不再自动显示</button>
+  </dialog>
+</body>
+</html>

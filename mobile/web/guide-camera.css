@@ -1,0 +1,27 @@
+.guide-camera-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+}
+.guide-camera-card {
+  display: grid;
+  grid-template-rows: 42px auto auto;
+  gap: 4px;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 2px;
+  border-radius: 8px;
+  text-align: center;
+  background: #eaf3ff;
+  color: #213652;
+}
+.guide-camera-card span:last-child { font-size: 10px; }
+.guide-camera-symbol { font-size: 29px; }
+@media (prefers-reduced-motion: no-preference) {
+  #guide[open] .guide-camera-card { animation: guide-camera-action 1.25s ease-out; }
+  #guide[open] .guide-camera-card:nth-child(2) { animation-delay: 1.25s; }
+  #guide[open] .guide-camera-card:nth-child(3) { animation-delay: 2.5s; }
+}
+@keyframes guide-camera-action {
+  30%, 75% { background: #cfe4ff; transform: translateY(-3px); }
+}

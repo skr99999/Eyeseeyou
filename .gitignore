@@ -6,3 +6,8 @@ dist/
 *.egg-info/
 *.db
 *.sqlite*
+
+# Downloaded mobile model and Web runtime files
+/mobile/web/vision-assets/*.task
+/mobile/web/vision-assets/vision_bundle.js
+/mobile/web/vision-assets/wasm/

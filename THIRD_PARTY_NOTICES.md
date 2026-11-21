@@ -16,3 +16,5 @@ Windows 桌面安装包另外包含 CPython、Tcl/Tk、cx_Freeze 启动组件和
 离线回放和计时核心只使用 Python 标准库。Windows 实时摄像头模式使用 OpenCV 和 MediaPipe。完整安装包包含构建时下载的 Google Face Landmarker 和 Gesture Recognizer 模型，第 1 版 float16 文件及其校验值列于 `windows/prepare_camera_models.py`。相关组件按其上游条款提供，随包许可位于 `licenses`。[Face Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker) · [Gesture Recognizer](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer)
 
 原板端的 TORQ SDK、板端可执行文件、模型权重、字体、前端库、真人影像及部署配置均未随本仓分发。项目 MIT 许可的范围以随仓源码和文档为准。
+
+Android APK 同时包含 Google MediaPipe Tasks Vision 0.10.32 的 JavaScript/WASM（SIMD 和非 SIMD）、Face Landmarker 与 Gesture Recognizer 的 float16 第 1 版。安装包内的 `assets/vision-assets/LICENSE-mediapipe.txt` 随附 MediaPipe Apache-2.0 许可及上游第三方说明。源码仓库通过 [固定版本下载脚本](mobile/prepare_vision_assets.py) 复现这些文件，脚本记录来源与 SHA-256。构建时将 npm 的 `vision_bundle.mjs` 原字节保存为 `vision_bundle.js`。[MediaPipe Web 源码和模型来源](https://github.com/google-ai-edge/mediapipe/tree/master/mediapipe/tasks/web/vision) · [npm 包](https://www.npmjs.com/package/@mediapipe/tasks-vision/v/0.10.32) · [模型许可上游说明](https://github.com/google-ai-edge/mediapipe-samples/issues/407)

@@ -4,6 +4,34 @@ EyeSeeYou Edge 把团队 A210 开发板上的学习助手搬到了 Windows。打
 
 **[下载 Windows x64 安装包 · v0.3.0（约 91 MiB）](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.3.0/EyeSeeYou-Edge-0.3.0-Windows-x64.msi)** · [版本说明与 SHA-256](https://github.com/skr99999/eyeseeyou-edge/releases/tag/v0.3.0) · [回归测试](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml) · [MIT](LICENSE)
 
+## 手机版
+
+**[下载 Android APK](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.3.1-mobile/EyeSeeYou-Edge-0.3.0-Android.apk)** · [iPhone 网页自托管 ZIP](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.3.1-mobile/EyeSeeYou-Edge-v0.3.1-mobile-Web.zip) · [移动版说明与 SHA-256](https://github.com/skr99999/eyeseeyou-edge/releases/tag/v0.3.1-mobile)
+
+1. 在 Android 手机上打开 APK 并按系统提示安装。最低 Android 8.0，建议先更新 Android System WebView。安装包自带本地模型，启动和视觉分析可以离线进行。
+2. 首次打开会显示五步教学，也可以从上方的「使用教学」重看。先在「学习助理」输入目标和时长，点「预览计划」。
+3. 点「开启摄像头」并允许相机访问。自然睁眼正视约 8 秒完成校准。校准后，连续闭眼达到 1.5 秒会显示提醒。
+4. 一次放一只手，保持手势约 1 秒。**OK** 开始或继续，**张掌**暂停，**握拳**结束并保存。关闭摄像头后仍可手动计时和查看样例回放。画面和关键点在本机内存中处理，学习记录保存在应用内。
+
+Android 15 模拟器验证了离线安装运行、拒绝相机权限后重试、相机关闭和退到后台释放、从旧版 APK 覆盖升级保留记录。注入样片验证了睁眼校准、OK 开始和握拳保存。张掌暂停与 OK 继续通过 Chromium 的样片测试，Android 模拟器尚未复现张掌暂停。手机实拍的疲劳判定仍待验证。
+
+<details>
+<summary>运行移动网页或构建 Android APK</summary>
+
+在 Windows 上安装 Python 3.10+、JDK 17、Android SDK Platform 35 和 Build-Tools 35.0.0。在仓库根目录执行：
+
+```powershell
+./mobile/android/build.ps1 -SdkRoot <Android SDK 路径> -JavaHome <JDK 17 路径>
+```
+
+构建脚本从官方 npm 仓库和 Google 模型存储下载固定版本的资源，校验 SHA-256，然后打包、签名并核对 APK 内每个资源。产物在 `mobile/dist/`。首次在指定 SDK 目录生成本地测试签名，覆盖升级需要和旧版使用同一签名。该发布标签的 APK 内部版本是 `0.3.0`（`versionCode 302`）。
+
+iPhone 可用 Safari 打开部署好的 HTTPS 页面，允许相机访问，再通过「分享」→「添加到主屏幕」建立入口。上方 ZIP 包含完整网页和模型，解压后可部署到受手机信任的 HTTPS 主机。
+
+也可先运行 `python mobile/prepare_vision_assets.py`，再用 `python -m http.server 8765 --bind 127.0.0.1 --directory mobile/web` 在本机浏览器打开。通过手机浏览器运行同一网页时，需要部署到手机信任的 HTTPS 地址才能使用摄像头。
+
+</details>
+
 ## 用自己的摄像头试一次
 
 1. 双击 MSI 安装，从 Windows 开始菜单打开 **EyeSeeYou Edge**。安装包已包含 Python、图形界面和两个视觉模型，安装后可离线运行。
