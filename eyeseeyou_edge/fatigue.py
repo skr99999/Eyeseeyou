@@ -242,7 +242,11 @@ class TemporalFatigueEngine:
 
         if closed:
             self.eye_closed_since = now if self.eye_closed_since is None else self.eye_closed_since
-            state.eye_closed_seconds = now - self.eye_closed_since
+            # An open candidate can confirm recovery on the next frame, but adds no closure evidence.
+            if both_open:
+                state.eye_closed_seconds = self.last_state.eye_closed_seconds
+            else:
+                state.eye_closed_seconds = now - self.eye_closed_since
             if state.eye_closed_seconds >= self.cfg["blink_min_seconds"]:
                 self._blink_latched = True
         else:

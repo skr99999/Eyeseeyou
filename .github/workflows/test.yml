@@ -15,3 +15,11 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - run: python -B -m unittest discover -s tests -v
+      - run: python examples/check_alerts.py
+      - run: python -m pip install --no-deps .
+      - name: Replay using only the installed package
+        run: >-
+          python -I -c "from pathlib import Path; from eyeseeyou_edge.replay import replay;
+          rows = list(replay(Path('examples/fatigue.jsonl').read_bytes().splitlines()));
+          assert [(r['t_ms'], r['action']) for r in rows if r['action']] ==
+          [(12500, 'request_fatigue_alert'), (13250, 'clear_fatigue_alert')]"

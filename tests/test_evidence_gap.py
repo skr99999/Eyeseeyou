@@ -2,10 +2,25 @@ import json
 import unittest
 from pathlib import Path
 
-from eyeseeyou_edge.__main__ import replay
+from eyeseeyou_edge.replay import replay
+from examples.sampling_sweep import observations
 
 
 class EvidenceGapTest(unittest.TestCase):
+    def test_reopening_cannot_start_a_long_closure_alert(self):
+        for hz in (5, 10, 20, 25, 50):
+            for duration in (1400, 1490, 2000):
+                with self.subTest(hz=hz, duration=duration):
+                    actions = [(r["t_ms"], r["eye_state"], r["action"])
+                               for r in replay(observations(hz, duration)) if r["action"]]
+                    period = 1000 // hz
+                    if duration < 1500:
+                        self.assertEqual(actions, [])
+                    else:
+                        first = 10000 + ((1500 + period - 1) // period) * period
+                        self.assertEqual(actions, [(first, "CLOSED", "request_fatigue_alert"),
+                                                   (12000 + period, "OPEN", "clear_fatigue_alert")])
+
     def test_tracking_loss_does_not_bridge_perclos_windows(self):
         sample = Path(__file__).resolve().parents[1] / "examples" / "tracking_loss.jsonl"
         lines = sample.read_bytes().splitlines()

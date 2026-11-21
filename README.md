@@ -8,6 +8,8 @@ EyeSeeYou Edge 把团队 A210 学习助手的判断过程搬到了普通电脑�
 
 ![同一段合成输入，第 24 秒重新睁眼。旧版沿用失效观测之前的样本，按 40% 闭眼占比发出提醒；修复后重新建立窗口，首帧闭眼占比为 0%，没有提醒。](docs/tracking-replay.png)
 
+**改一条规则，会让用户多收到哪一次提醒？** 运行 `python examples/check_alerts.py` 即可核对三段固定输入的全部提醒与撤回时间。另一个实验用五种采样率复现了“已经睁眼才开始提醒”的边界问题。[查看各版实测对照、复现命令和同类项目](docs/replay-evaluation.md)
+
 ## 复现图中的误报
 
 在仓库根目录用 Python 3.10 或更高版本生成离线报告：
@@ -51,6 +53,19 @@ python -B -m unittest discover -s tests -v
 第二条命令把 20 分钟分成词汇学习 7 分钟、回忆测试 10 分钟、错词复盘 3 分钟。第三条带上用户确认，原版专注状态机才会产生 `focus_started` 并进入 `RUNNING`。这个命令在内存 SQLite 中演示启动过程，关闭进程即结束。第四条把一次离席、回座和主动确认放进同一场会话，可以观察回座后什么时候恢复计时。
 
 ## 如何接自己的观测
+
+在仓库根目录运行 `python -m pip install .` 后，其他 Python 项目可以直接逐帧读取判断结果。安装时 pip 会准备构建工具；包的运行依赖均来自标准库。也可以提前运行 `python -m pip wheel --no-deps -w dist .`，将生成的 wheel 带到另一台电脑离线安装。
+
+```python
+from eyeseeyou_edge.replay import replay
+
+with open("observations.jsonl", "rb") as observations:
+    for frame in replay(observations):
+        if frame["action"]:
+            print(frame["t_ms"], frame["action"])
+```
+
+将自己的观测文件命名为 `observations.jsonl`，或用下面的格式准备输入。完整示例也可直接使用仓库的 `examples/fatigue.jsonl`。
 
 每行一个 UTF-8 JSON 对象，五个字段均为必填。下面是一帧有效观测，以及随后一次明确的缺面。完整可运行输入见 [合成样本](examples/fatigue.jsonl)。
 

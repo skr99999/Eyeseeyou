@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eyeseeyou-edge"
+version = "0.1.0"
+description = "Offline replay of an edge agent's fatigue alerts and focus sessions"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE", "AUTHORS.txt", "THIRD_PARTY_NOTICES.md"]
+
+[project.urls]
+Repository = "https://github.com/skr99999/eyeseeyou-edge"
+
+[tool.setuptools]
+packages = ["eyeseeyou_edge"]
+
+[tool.setuptools.package-data]
+eyeseeyou_edge = ["replay_config.json"]
