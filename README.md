@@ -39,8 +39,10 @@ python -B -m unittest discover -s tests -v
 
 - `t_ms` 是严格递增的非负整数毫秒。内部以首帧为时间原点。
 - `eye_state` 可选 `OPEN`、`CLOSED`、`UNCERTAIN`。`ear` 和 `mar` 是眼睛、嘴部的纵横比。有脸时应为非负有限数，缺面时填 `null` 并将眼部状态标为 `UNCERTAIN`。
-- 输入边界只接收这五个字段。请在采集端将模型输出转换为该格式，并显式记录缺面。仅省略丢失的帧会留下时间空洞，无法判断这段时间内人的状态。
+- 输入只接收这五个字段。有观测但未检测到人脸时，请显式记录缺面。相邻观测间隔超过 1 秒时，恢复首帧重新开始累计闭眼和张嘴时长，并重建闭眼占比窗口。间隔恰好 1 秒仍允许连续计时。采集端可按实际采样间隔设置 `fatigue.max_observation_gap_seconds`。
 - 每行结果含判断理由 `reasons`、当前风险标志 `alarm` 和动作 `action`。动作描述可供上层程序消费，回放自身只打印结果。格式错误时会指出文件、行号并以状态码 2 退出，之前的有效行已经输出。
+
+运行 `python -m eyeseeyou_edge examples/camera_gap.jsonl` 可复现一次断流：9.0 秒和 9.2 秒观测到闭眼，下一帧在 12.5 秒到达。该帧的 `eye_closed_seconds` 为 0，`action` 为 `null`。
 
 ## 开源范围与复现
 

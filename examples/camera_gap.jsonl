@@ -1,0 +1,8 @@
+{"t_ms":0,"face_found":true,"eye_state":"OPEN","ear":0.3,"mar":0.1}
+{"t_ms":2000,"face_found":true,"eye_state":"OPEN","ear":0.3,"mar":0.1}
+{"t_ms":4000,"face_found":true,"eye_state":"OPEN","ear":0.3,"mar":0.1}
+{"t_ms":6000,"face_found":true,"eye_state":"OPEN","ear":0.3,"mar":0.1}
+{"t_ms":8000,"face_found":true,"eye_state":"OPEN","ear":0.3,"mar":0.1}
+{"t_ms":9000,"face_found":true,"eye_state":"CLOSED","ear":0.1,"mar":0.1}
+{"t_ms":9200,"face_found":true,"eye_state":"CLOSED","ear":0.1,"mar":0.1}
+{"t_ms":12500,"face_found":true,"eye_state":"CLOSED","ear":0.1,"mar":0.1}

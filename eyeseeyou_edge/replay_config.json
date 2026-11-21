@@ -5,6 +5,7 @@
     "open_confirm_frames": 2
   },
   "fatigue": {
+    "max_observation_gap_seconds": 1.0,
     "calibration_seconds": 8.0,
     "ear_threshold_ratio": 0.58,
     "min_ear_threshold": 0.12,

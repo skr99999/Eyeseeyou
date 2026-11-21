@@ -13,6 +13,8 @@ class TemporalFatigueEngine:
         self.cfg = cfg
         self.eye_cfg = dict(eye_cfg or {})
         self.eye_mode = str(self.eye_cfg.get("mode", "hybrid_v2"))
+        self.max_observation_gap = float(cfg.get("max_observation_gap_seconds", 1.0))
+        self.last_observation_at: float | None = None
         self.reset_calibration()
         self.closed_history: deque[tuple[float, bool]] = deque()
         self.blink_times: deque[float] = deque()
@@ -51,6 +53,7 @@ class TemporalFatigueEngine:
     def reset_runtime_state(self) -> FatigueState:
         """Clear live fatigue evidence while preserving calibration and history storage."""
         self.closed_history.clear()
+        self.last_observation_at = None
         self.yawn_times.clear()
         self.eye_closed_since = None
         self.eye_candidate_since = None
@@ -105,8 +108,15 @@ class TemporalFatigueEngine:
             roll=m.roll,
         )
 
-        if not valid:
-            # Missing observations break consecutive eye and mouth evidence.
+        # Round below the replay clock's millisecond resolution at the exact boundary.
+        gap = (self.last_observation_at is not None
+               and round(now - self.last_observation_at, 6) > self.max_observation_gap)
+        self.last_observation_at = now
+        if gap:
+            # Time spent offline cannot establish PERCLOS coverage or a continuous absence.
+            self.closed_history.clear()
+            self.face_missing_since = None
+        if gap or not valid:
             self.closed_candidate_frames = self.open_candidate_frames = 0
             self.eye_candidate_since = self.eye_closed_since = self.mouth_open_since = None
             self.eyes_closed_latched = self._blink_latched = self._yawn_latched = False
