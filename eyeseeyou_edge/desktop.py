@@ -6,6 +6,7 @@ from math import ceil
 import os
 from pathlib import Path
 import sys
+import time
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import webbrowser
@@ -13,6 +14,7 @@ import webbrowser
 from .database import Database
 from .desktop_view import BLUE, INK, MUTED, PAPER, SKY, TEAL, ReplayView, brand, card, label
 from .focus import FocusSessionController
+from .live_camera import CameraSession, GestureHold
 from .plan import confirm_plan, preview_plan
 from .replay import replay
 from .report import write_report
@@ -34,7 +36,7 @@ class Desktop:
         self.source = self.report = self.job = None
         self.worker = ThreadPoolExecutor(max_workers=1)
         root.title("EyeSeeYou Edge")
-        root.geometry(f"{min(1140, root.winfo_screenwidth()-45)}x{min(585, root.winfo_screenheight()-85)}")
+        root.geometry(f"{min(1140, root.winfo_screenwidth()-45)}x{min(655, root.winfo_screenheight()-85)}")
         root.minsize(885, 550)
         root.configure(bg=SKY)
         root.option_add("*Font", "{Microsoft YaHei UI} 10")
@@ -75,14 +77,20 @@ class Desktop:
         board.rowconfigure(0, weight=1)
         board.rowconfigure(1, minsize=110)
         chart, state, study = (card(board, 0, i) for i in range(3))
-        label(chart, "观测回放", 16, bold=True).pack(anchor="w")
+        self.chart_title = label(chart, "观测回放", 16, bold=True)
+        self.chart_title.pack(anchor="w")
         self.filename = label(chart, "请选择观测日志", 9, MUTED)
         self.filename.pack(anchor="w")
         label(state, "疲劳状态", 16, bold=True).pack(anchor="w")
-        label(state, "所选回放帧", 9, MUTED).pack(anchor="w")
+        self.state_source = label(state, "所选回放帧", 9, MUTED)
+        self.state_source.pack(anchor="w")
         self.replay_view = ReplayView(chart, state)
         files = tk.Frame(chart, bg=PAPER)
         files.pack(anchor="w", pady=(7, 0))
+        self.camera = None
+        self.photo = None
+        self.camera_button = ttk.Button(files, text="开启摄像头", command=self.toggle_camera)
+        self.camera_button.pack(side="left", padx=(0, 5))
         ttk.Button(files, text="打开日志…", command=self.choose_source).pack(side="left")
         assets = Path(sys.executable).parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parents[1]
         self.demo = assets / "examples" / "fatigue.jsonl"
@@ -121,6 +129,114 @@ class Desktop:
             self.select(self.demo)
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.tick()
+
+    def toggle_camera(self):
+        if self.replay_view.live:
+            self.stop_camera()
+            return
+        if self.camera and self.camera.thread.is_alive():
+            return
+        self.camera = CameraSession()
+        self.gesture = GestureHold()
+        self.frame_time = time.monotonic()
+        self.last_alert = -1e9
+        self.replay_view.live = True
+        self.chart_title.configure(text="实时画面")
+        self.state_source.configure(text="摄像头实时观测")
+        self.filename.configure(text="保持约 1 秒：OK 开始 / 继续，张掌暂停，握拳结束")
+        self.camera_button.configure(text="关闭摄像头")
+        self.replay_view.slider.configure(state="disabled")
+        for button in self.events.winfo_children():
+            if isinstance(button, ttk.Button):
+                button.state(["disabled"])
+        self.clear_live("正在打开摄像头和本地模型…")
+        self.camera.thread.start()
+        self.poll_camera(self.camera)
+
+    def clear_live(self, message):
+        view = self.replay_view
+        view.plot.delete("all")
+        self.photo = None
+        view.position.configure(text=message)
+        view.state.configure(text="等待画面", fg=MUTED)
+        view.reason.configure(text="")
+        for widget in view.metrics:
+            widget.configure(text="—")
+
+    def stop_camera(self):
+        self.camera.stopping.set()
+        view = self.replay_view
+        view.live = False
+        self.photo = None
+        self.chart_title.configure(text="观测回放")
+        self.state_source.configure(text="所选回放帧")
+        self.camera_button.configure(text="开启摄像头")
+        view.plot.delete("all")
+        if self.source:
+            prefix = "内置样例" if self.source == self.demo else "本地日志"
+            self.filename.configure(text=f"{prefix}  ·  {self.source.name}")
+            view.slider.configure(state="normal" if len(view.rows)>1 else "disabled")
+            view.draw()
+        for button in self.events.winfo_children():
+            if isinstance(button, ttk.Button):
+                button.state(["!disabled"])
+
+    def apply_gesture(self, pose):
+        s = self.focus.current
+        if pose == "OK":
+            if s.segment_review_ready:
+                self.command("resolve_segment", {"completed": True, "source": "gesture"})
+            elif s.state in {"PAUSED", "AWAY"}:
+                self.command("resume_focus", {"source": "gesture"})
+            elif s.state != "RUNNING":
+                try:
+                    plan = self.plan or preview_plan(self.goal.get())
+                    request = confirm_plan(plan, confirmed=True)
+                except ValueError as error:
+                    self.status.configure(text=str(error))
+                    return
+                self.command(request["command"], dict(request["payload"], source="gesture"))
+        elif pose in {"OPEN_PALM", "FIST"}:
+            self.command("pause_focus" if pose == "OPEN_PALM" else "stop_focus", {"source": "gesture"})
+
+    def poll_camera(self, camera):
+        if camera is not self.camera or not self.replay_view.live:
+            return
+        if camera.error:
+            self.stop_camera()
+            messagebox.showerror("实时摄像头", camera.error, parent=self.root)
+            return
+        view = self.replay_view
+        now = time.monotonic()
+        width, height = view.plot.winfo_width(), view.plot.winfo_height()
+        camera.size = max(1, width), max(1, height)
+        frame = camera.frames.pop() if camera.frames else None
+        if frame and now-frame.captured <= 1:
+            self.frame_time = frame.captured
+            self.photo = tk.PhotoImage(data=frame.ppm, format="PPM", master=self.root)
+            view.plot.delete("all")
+            view.plot.create_image(width//2, height//2, image=self.photo)
+            s = frame.state
+            names = {"NORMAL": "正常", "CALIBRATING": "正在校准", "FATIGUE": "疲劳提醒",
+                     "WARNING": "提醒", "RECOVERING": "恢复中", "NO_FACE": "未检测到人脸"}
+            title = names.get(s.state, s.state) if s.face_present else "未检测到人脸"
+            view.state.configure(text=title, fg="#ae432c" if s.alarm else TEAL)
+            view.reason.configure(text="、".join(s.reasons) or "眼部观测有效")
+            values = ((f"{s.perclos:.0%}", f"{s.eye_closed_seconds:.1f} s", str(s.blinks_total), f"{s.risk_score:.2f}")
+                      if s.eye_sample_valid else ("—", "—", "—", "—"))
+            for widget, value in zip(view.metrics, values):
+                widget.configure(text=value)
+            pose = {"OK":"OK", "OPEN_PALM":"张掌", "FIST":"握拳"}.get(frame.pose, "无")
+            view.position.configure(text=f"{frame.width} × {frame.height}  ·  第 {frame.number} 帧  ·  手势 {pose}")
+            command = self.gesture.update(frame.pose, frame.captured)
+            if command:
+                self.apply_gesture(command)
+            if s.alarm and now-self.last_alert >= 30:
+                self.root.bell()
+                self.last_alert = now
+        elif now-self.frame_time > 2:
+            self.clear_live("等待有效摄像头帧，可关闭后重试")
+        self.root.after(40, self.poll_camera, camera)
 
     def invalidate_preview(self, *_):
         self.plan = None
@@ -232,6 +348,8 @@ class Desktop:
         except (OSError, ValueError) as error:
             messagebox.showerror("观测回放", str(error), parent=self.root)
             return
+        if self.replay_view.live:
+            self.stop_camera()
         self.source, self.report = source, None
         prefix = "内置样例" if source == self.demo else "本地日志"
         self.filename.configure(text=f"{prefix}  ·  {source.name}")
@@ -289,6 +407,9 @@ class Desktop:
             return
         self.focus.update(None)
         self.focus.checkpoint(force=True)
+        if self.camera:
+            self.camera.stopping.set()
+            self.camera.thread.join(timeout=1)
         self.worker.shutdown(wait=False)
         self.root.destroy()
 

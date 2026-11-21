@@ -1,21 +1,42 @@
-# EyeSeeYou Edge · 可回放的端侧专注 Agent
+# EyeSeeYou Edge · 摄像头驱动的专注计时与疲劳提醒
 
-[![离线回归测试](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml) · Python 3.10+ · [MIT](LICENSE)
+EyeSeeYou Edge 把团队 A210 开发板上的学习助手搬到了 Windows。打开电脑摄像头，用一个 OK 手势开始学习；持续闭眼时，界面会显示触发提醒的原因和时长。摄像头画面和关键点在本机内存中处理，学习进度保存在当前用户的电脑上。
 
-### Windows 桌面版
+**[下载 Windows x64 安装包 · v0.3.0（约 91 MiB）](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.3.0/EyeSeeYou-Edge-0.3.0-Windows-x64.msi)** · [版本说明与 SHA-256](https://github.com/skr99999/eyeseeyou-edge/releases/tag/v0.3.0) · [回归测试](https://github.com/skr99999/eyeseeyou-edge/actions/workflows/test.yml) · [MIT](LICENSE)
 
-[下载 Windows x64 安装包（0.2.1）](https://github.com/skr99999/eyeseeyou-edge/releases/download/v0.2.1/EyeSeeYou-Edge-0.2.1-Windows-x64.msi)。双击 MSI 完成安装，从开始菜单打开 **EyeSeeYou Edge**。安装包包含 Python 和图形界面，可离线使用。
+## 用自己的摄像头试一次
 
-![Windows 桌面版实机截图。左侧查看所选观测帧，中间显示该帧的疲劳状态，右侧是背单词计划。](docs/windows-desktop.png)
+1. 双击 MSI 安装，从 Windows 开始菜单打开 **EyeSeeYou Edge**。安装包已包含 Python、图形界面和两个视觉模型，安装后可离线运行。
+2. 在「学习助理」输入 **背单词 20 分钟**，点「预览计划」。再点左下方「开启摄像头」，正视镜头、自然睁眼约 **8 秒**，等中栏从「正在校准」变为「正常」。
+3. 将一只手完整放入画面。拇指和食指成环、其余三指伸开，保持 **约 1 秒**。识别到 **OK** 后，20 分钟倒计时开始。**张掌**暂停，再做 **OK** 从剩余时间继续；**握拳**结束并保存。
+4. 想试疲劳提醒，可以在校准后坐在镜头前闭眼约 **2 秒**。有效观测中的连续闭眼达到 1.5 秒会触发提醒，中栏显示原因。点「关闭摄像头」即可回到日志回放。
 
-- **学习与专注**：输入“背单词 20 分钟”，预览分段计划，点“确认开始”。支持暂停、继续、结束与分段加时。关闭应用会保存进度，重新打开后由你确认继续。
-- **观测回放**：启动后即可查看内置样例。点击底部的「12.5s 发出提醒」和「13.25s 撤回提醒」，对照曲线查看规则何时触发、何时恢复。也可以打开自己的 JSONL，屏幕预览前 240 帧，HTML 报告包含整段日志。学习进度保存在当前用户的 `%LOCALAPPDATA%\EyeSeeYou Edge`。桌面版使用手动专注计时和日志回放。
+![用手势照片驱动桌面计时器的实测动图。OK 开始，张掌暂停，再做 OK 继续，握拳结束。](docs/gesture-timer.gif)
 
-开发运行使用 `python -m eyeseeyou_edge.desktop`（需要 Tk）。在 64 位 Windows、CPython 3.13 的虚拟环境中执行 `python -m pip install cx-Freeze==8.7.4` 和 `python windows/build_msi.py bdist_msi` 可重新构建安装包，产物位于 `windows/dist/`。
+动图里的手形是从示例照片提取的关键点，时间和状态取自实际运行的桌面版。张掌暂停在 **19:58**，再次 OK 从 **19:58** 继续。样例来源：[OK 手势](https://commons.wikimedia.org/wiki/File:OK_Hand_Gesture_(cropped).jpg) · [张掌](https://storage.googleapis.com/mediapipe-assets/right_hands.jpg) · [握拳](https://storage.googleapis.com/mediapipe-assets/fist.jpg)。
 
-EyeSeeYou Edge 把团队 A210 学习助手的判断过程搬到了普通电脑上。给它一段带时间戳的眼口观测，就能逐帧查出哪一帧触发了疲劳提醒、哪一帧撤回。专注会话也能回放，从生成学习计划，到离席暂停、回座后由用户确认继续。
+![Windows 内置摄像头实测。第 348 帧显示持续闭眼 2.7 秒，触发疲劳提醒。公开截图已遮挡摄像头画面。](docs/windows-live-alert.png)
 
-*Replay an edge agent’s alerts and focus sessions locally, using timestamped observations and Python’s standard library.*
+这台测试电脑的内置摄像头以 **640 × 480** 运行。截图保留了第 348 帧的判定：**持续闭眼 2.7 秒**。照片区域已遮挡，使用软件时这里显示实时画面。
+
+**没有摄像头也能试。** 启动后直接点内置回放里的「12.5s 发出提醒」和「13.25s 撤回提醒」，可以跳到对应帧，对照闭眼曲线和判断原因。自己的 JSONL 也可以在桌面预览并导出完整 HTML 报告。[查看回放界面](docs/windows-desktop.png)
+
+<details>
+<summary>从源码运行或构建 Windows 安装包</summary>
+
+在 64 位 Windows 的 CPython 3.13 虚拟环境中，从仓库根目录运行：
+
+```powershell
+python -m pip install ".[camera]"
+python windows/prepare_camera_models.py
+python -m eyeseeyou_edge.desktop
+```
+
+构建安装包使用 `python -m pip install cx-Freeze==8.7.4` 和 `python windows/build_msi.py bdist_msi`，产物位于 `windows/dist/`。构建时校验两个模型的 SHA-256。会话数据保存在 `%LOCALAPPDATA%\EyeSeeYou Edge`。
+
+</details>
+
+## 从一段记录定位误报
 
 ![同一段合成输入，第 24 秒重新睁眼。旧版沿用失效观测之前的样本，按 40% 闭眼占比发出提醒；修复后重新建立窗口，首帧闭眼占比为 0%，没有提醒。](docs/tracking-replay.png)
 
@@ -106,7 +127,7 @@ python -I examples/check_session.py examples/fatigue.jsonl
 | --- | --- |
 | 疲劳判断 | 保留 A210 时间规则、校准和状态模型。缺面或断流会打断连续闭眼计时；持续失去有效眼部观测会重建闭眼占比窗口。字段 `perclos` 是滑窗中有效样本的闭眼占比，宜在稳定采样率下比较。 |
 | 学习计划与行动 | 根据目标及时长在本地拆分子任务；校验确认后的计划，再交给专注状态机执行。可回放离席与恢复。 |
-| 板端视觉与语言模型 | 暑期系统有摄像头、板端视觉推理和可选的外部语言服务。本仓从观测输入开始运行，计划默认使用本地模板。 |
+| 板端视觉与语言模型 | 暑期系统使用板端视觉推理和可选的外部语言服务。Windows 摄像头版使用本地 CPU 关键点模型。两条视觉路径共用疲劳时序规则，桌面计划使用本地模板。 |
 
 ### 怎样读这些结果
 

@@ -48,6 +48,7 @@ def brand(parent):
 
 class ReplayView:
     def __init__(self, chart, state):
+        self.live = False
         self.rows = []
         self.plot = tk.Canvas(chart, bg=NIGHT, bd=0, highlightthickness=0, height=120)
         self.plot.pack(fill="both", expand=True, pady=(8, 5))
@@ -81,7 +82,7 @@ class ReplayView:
         self.draw()
 
     def draw(self, *_):
-        if not self.rows:
+        if self.live or not self.rows:
             return
         index = min(round(self.slider.get()), len(self.rows)-1)
         row = self.rows[index]

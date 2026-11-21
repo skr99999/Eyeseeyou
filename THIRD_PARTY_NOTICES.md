@@ -13,4 +13,6 @@ Windows 桌面安装包另外包含 CPython、Tcl/Tk、cx_Freeze 启动组件和
 | `replay_config.json` | 从暑期运行配置选取疲劳判断、眼状态确认、告警冷却所需参数，并增加断流判定间隔。 |
 | 命令行入口、示例、回归测试与持续集成配置 | 为公开复现整理；示例观测为合成数据。 |
 
-开源版运行时只使用 Python 标准库。原板端交付件中的 TORQ SDK、板端可执行文件、模型权重、字体、前端库、真人影像及部署配置均未随本仓分发。项目 MIT 许可的范围以随仓源码和文档为准；需要板端组件时，请分别核对其原始提供方的许可。
+离线回放和计时核心只使用 Python 标准库。Windows 实时摄像头模式使用 OpenCV 和 MediaPipe。完整安装包包含构建时下载的 Google Face Landmarker 和 Gesture Recognizer 模型，第 1 版 float16 文件及其校验值列于 `windows/prepare_camera_models.py`。相关组件按其上游条款提供，随包许可位于 `licenses`。[Face Landmarker](https://ai.google.dev/edge/mediapipe/solutions/vision/face_landmarker) · [Gesture Recognizer](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer)
+
+原板端的 TORQ SDK、板端可执行文件、模型权重、字体、前端库、真人影像及部署配置均未随本仓分发。项目 MIT 许可的范围以随仓源码和文档为准。

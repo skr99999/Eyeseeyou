@@ -6,6 +6,8 @@ import sys
 import tomllib
 
 from cx_Freeze import Executable, setup
+from importlib.metadata import distribution
+from prepare_camera_models import MODELS, prepare
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
@@ -13,6 +15,19 @@ os.chdir(HERE)
 sys.path.insert(0, str(ROOT))
 version = tomllib.loads((ROOT / "pyproject.toml").read_text("utf-8"))["project"]["version"]
 assets = [(ROOT / name, name) for name in ("LICENSE", "AUTHORS.txt", "THIRD_PARTY_NOTICES.md")]
+model_dir = prepare()
+assets.extend((model_dir / f"{name}.task", f"models/{name}.task") for name in MODELS)
+mp_dll = "mediapipe/tasks/c/libmediapipe.dll"
+assets.append((distribution("mediapipe").locate_file(mp_dll), "lib/" + mp_dll))
+for package in ("mediapipe", "opencv-contrib-python", "numpy", "matplotlib", "pillow",
+                "absl-py", "flatbuffers", "contourpy", "cycler", "fonttools", "kiwisolver",
+                "pyparsing", "python-dateutil", "packaging"):
+    dist = distribution(package)
+    for file in dist.files or ():
+        if file.is_absolute() or ".." in file.parts:
+            continue
+        if "license" in file.name.lower() or "copying" in file.name.lower():
+            assets.append((dist.locate_file(file), f"licenses/{package}/{file.as_posix()}"))
 assets.extend([
     (ROOT / "examples/fatigue.jsonl", "examples/fatigue.jsonl"),
     (ROOT / "eyeseeyou_edge/replay_config.json", "lib/eyeseeyou_edge/replay_config.json"),
@@ -22,7 +37,7 @@ setup(
     name="EyeSeeYou Edge", version=version, author="EyeSeeYou Team",
     description="Local study planner, focus timer and replay viewer",
     options={
-        "build_exe": {"include_files": assets, "include_msvcr": True},
+        "build_exe": {"include_files": assets, "include_msvcr": True, "excludes": ["sounddevice"]},
         "bdist_msi": {
             "all_users": False,
             "initial_target_dir": r"[LocalAppDataFolder]Programs\EyeSeeYou Edge",
